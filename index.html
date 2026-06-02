@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เว็บเลือกตั้ง</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <!-- สั่งให้ Browser เริ่มโหลดรูปภาพสำคัญล่วงหน้าทันที -->
+    <link rel="preload" as="image" href="bg.jpg">
+    <link rel="preload" as="image" href="01.png">
+    <link rel="preload" as="image" href="02.png">
+    <style>
+        /* Basic Reset */
+        body {
+            margin: 0;
+            font-family: 'Kanit', sans-serif;
+            background-color: #111; /* สีพื้นหลังสำรอง (Fallback) */
+            background-image: url('bg.jpg'); /* ใส่รูปพื้นหลัง */
+            background-size: cover; /* จัดขนาดให้พอดีจอภาพ */
+            background-position: center; /* จัดตำแหน่งรูปให้อยู่ตรงกลาง */
+            background-attachment: fixed; /* ให้พื้นหลังติดอยู่กับที่เวลาเลื่อนจอ */
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden; /* Hide scrollbar when modal is active */
+        }
+
+        /* --- 1. โปสเตอร์เลือกตั้ง (Modal/Toast) --- */
+        #preElectionModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .poster-content {
+            background-color: rgba(15, 15, 25, 0.95); /* ปรับเป็นโทนสีมืด */
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid #444;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            max-width: 600px;
+            width: 90%;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .poster-content h2 {
+            color: #f0ad4e; /* สีทองให้เข้ากับคำว่า VS */
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(240, 173, 78, 0.5);
+        }
+
+        .poster-image {
+            width: 100%;
+            height: 300px;
+            background-image: url('bg.jpg'); /* ดึงรูปพื้นหลังมาโชว์ในโปสเตอร์ด้วย */
+            background-size: cover;
+            background-position: center;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 2px 2px 10px #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            font-weight: bold;
+        }
+
+        /* --- Button Style (General) --- */
+        button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            border-radius: 8px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin: 5px; /* For spacing between buttons */
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        #startVotingBtn {
+            background-color: #f0ad4e; /* ปุ่มสีทองให้เด่นชัด */
+            color: #111;
+            font-size: 1.5em;
+            padding: 20px 40px;
+            border: 2px solid #ffc107;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.8), 0 0 30px rgba(255, 193, 7, 0.4);
+        }
+
+        #startVotingBtn:hover {
+            background-color: #ffd27f;
+            box-shadow: 0 0 25px rgba(255, 193, 7, 1), 0 0 40px rgba(255, 193, 7, 0.8);
+        }
+
+
+        /* --- 2. หน้าหลัก (Voting Page) --- */
+        #votingPage {
+            display: none; /* Hidden by default */
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column; /* Main container for candidates and abstain button */
+            justify-content: space-between; /* Push abstain button to bottom */
+            align-items: center;
+        }
+
+        .candidates-container {
+            display: flex;
+            width: 100%;
+            flex: 1; /* Takes remaining space */
+            background-color: rgba(10, 10, 20, 0.6); /* ลดความทึบลงเพื่อให้เห็นฉากหลังชัดขึ้น */
+            backdrop-filter: blur(2px); /* ลดความเบลอของฉากหลัง */
+            position: relative; /* สำหรับจัดตำแหน่งโลโก้ VS */
+        }
+
+        .candidate {
+            flex: 1; /* 50/50 split */
+            padding: 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around; /* Distribute content vertically */
+            align-items: center;
+            box-sizing: border-box; /* Include padding in width */
+        }
+
+        .candidate:last-child {
+            border-right: none;
+        }
+
+        .candidate h3 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #0275d8;
+        }
+        /* แบ่งสีฝั่งชัดเจน แดง vs น้ำเงิน */
+        .candidate-1 h3 { color: #ff4d4d; text-shadow: 0 0 10px rgba(255, 77, 77, 0.6); }
+        .candidate-2 h3 { color: #4da6ff; text-shadow: 0 0 10px rgba(77, 166, 255, 0.6); }
+
+        .candidate p {
+            font-size: 1.5em;
+            color: #ccc;
+            margin-bottom: 30px;
+        }
+
+        .candidate-poster {
+            width: 80%;
+            max-width: 300px;
+            height: auto;
+            object-fit: cover;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+
+        /* กรอบผู้สมัครให้เรืองแสงเข้ากับป้ายไฟนีออน */
+        .candidate-1 .candidate-poster { 
+            border: 2px solid #ff4d4d;
+            box-shadow: 0 0 20px rgba(255, 77, 77, 0.3);
+        }
+        .candidate-2 .candidate-poster { 
+            border: 2px solid #4da6ff;
+            box-shadow: 0 0 20px rgba(77, 166, 255, 0.3);
+        }
+
+        /* โลโก้ VS ตรงกลางเรืองแสง */
+        .vs-badge {
+            position: absolute;
+            left: 50%;
+            top: 45%; /* ขยับขึ้นจากตรงกลางเล็กน้อยให้อยู่ระดับสายตา */
+            transform: translate(-50%, -50%);
+            font-size: 14em;
+            font-weight: 900;
+            font-style: italic;
+            color: #fff;
+            text-shadow: 0 0 15px #ff8c00, 0 0 30px #ff8c00, 0 0 50px #ff0000, 0 0 80px #ff0000;
+            z-index: 10;
+            pointer-events: none; /* ป้องกันไม่ให้โลโก้บังการคลิกปุ่มต่างๆ */
+        }
+
+        .vote-button {
+            color: white;
+            font-size: 1.3em;
+            padding: 18px 35px;
+        }
+
+        /* ปุ่มโหวตแยกสี แดง vs น้ำเงิน พร้อมเอฟเฟกต์เรืองแสง */
+        .candidate-1 .vote-button { 
+            background-color: #cc0000; 
+            border: 2px solid #ff4d4d;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 77, 77, 0.4);
+        }
+        .candidate-1 .vote-button:hover { 
+            background-color: #ff3333; 
+            box-shadow: 0 0 25px rgba(255, 51, 51, 1), 0 0 40px rgba(255, 77, 77, 0.8);
+        }
+
+        .candidate-2 .vote-button { 
+            background-color: #005ce6; 
+            border: 2px solid #4da6ff;
+            box-shadow: 0 0 15px rgba(0, 92, 230, 0.8), 0 0 30px rgba(77, 166, 255, 0.4);
+        }
+        .candidate-2 .vote-button:hover { 
+            background-color: #3385ff; 
+            box-shadow: 0 0 25px rgba(51, 133, 255, 1), 0 0 40px rgba(77, 166, 255, 0.8);
+        }
+
+        .abstain-container {
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: rgba(15, 15, 25, 0.95);
+            border-top: 1px solid #444;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
+        }
+
+        #abstainVoteBtn {
+            background-color: #444; /* ปุ่มสีเทาเข้มแบบสุภาพ */
+            color: #ddd;
+            border: 2px solid #777;
+            box-shadow: 0 0 15px rgba(136, 136, 136, 0.8), 0 0 30px rgba(136, 136, 136, 0.4);
+        }
+
+        #abstainVoteBtn:hover {
+            background-color: #666;
+            color: white;
+            box-shadow: 0 0 25px rgba(170, 170, 170, 1), 0 0 40px rgba(170, 170, 170, 0.8);
+        }
+
+        /* --- 3. หน้าจอแจ้งเตือนสำเร็จ (Success Modal) --- */
+        #successModal {
+            display: none; /* ซ่อนไว้เป็นค่าเริ่มต้น */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            text-align: center;
+        }
+
+        #successMessage {
+            color: #5cb85c;
+            font-size: 3.5em;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(92, 184, 92, 0.8);
+        }
+
+        #restartBtn {
+            background-color: #5cb85c;
+            color: white;
+            border: 2px solid #4cae4c;
+            box-shadow: 0 0 15px rgba(92, 184, 92, 0.8), 0 0 30px rgba(92, 184, 92, 0.4);
+            font-size: 1.5em;
+            padding: 20px 40px;
+        }
+
+        #restartBtn:hover {
+            background-color: #4cae4c;
+            box-shadow: 0 0 25px rgba(92, 184, 92, 1), 0 0 40px rgba(92, 184, 92, 0.8);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .candidates-container {
+                flex-direction: column; /* Stack candidates vertically on smaller screens */
+            }
+
+            .candidate {
+                border-right: none;
+                padding: 20px;
+            }
+
+            .vs-badge {
+                top: 50%; /* ให้อยู่ตรงกลางพอดีเมื่อเป็นหน้าจอมือถือ */
+                font-size: 8em; /* ปรับขนาดให้เล็กลงในมือถือ */
+            }
+
+            .candidate:last-child {
+                border-bottom: none;
+            }
+
+            .poster-content {
+                padding: 20px;
+            }
+
+            .poster-content h2 {
+                font-size: 1.8em;
+            }
+
+            .poster-image {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. โปสเตอร์เลือกตั้ง (Modal/Toast) -->
+    <div id="preElectionModal">
+        <div class="poster-content">
+            <h2>เลือกตั้งสภานักเรียน </h2>
+            <div class="poster-image"></div>
+            <button id="startVotingBtn">เริ่มลงคะแนนเสียง</button>
+        </div>
+    </div>
+
+    <!-- 2. หน้าหลัก (Voting Page) -->
+    <div id="votingPage">
+        <div class="candidates-container">
+            <!-- ผู้สมัครเบอร์ 1 (ซ้าย) -->
+            <div class="candidate candidate-1">
+                <h3>เบอร์ 1</h3>
+                <img src="01.png" alt="รูปผู้สมัครเบอร์ 1" class="candidate-poster" fetchpriority="high" loading="eager">
+                <button class="vote-button" onclick="vote(1)">ลงคะแนน เบอร์ 1</button>
+            </div>
+            
+            <!-- โลโก้ VS ตรงกลาง -->
+            <div class="vs-badge">VS</div>
+
+            <!-- ผู้สมัครเบอร์ 2 (ขวา) -->
+            <div class="candidate candidate-2">
+                <h3>เบอร์ 2</h3>
+                <img src="02.png" alt="รูปผู้สมัครเบอร์ 2" class="candidate-poster" fetchpriority="high" loading="eager">
+                <button class="vote-button" onclick="vote(2)">ลงคะแนน เบอร์ 2</button>
+            </div>
+        </div>
+        
+        <!-- ปุ่มไม่ประสงค์ลงคะแนน (ตรงกลางด้านล่าง) -->
+        <div class="abstain-container">
+            <button id="abstainVoteBtn" onclick="vote(0)">ไม่ประสงค์ลงคะแนน</button>
+        </div>
+    </div>
+
+    <!-- 3. หน้าต่างโหวตสำเร็จ (Success Toast/Modal) -->
+    <div id="successModal">
+        <div class="poster-content">
+            <h2 id="successMessage">โหวตสำเร็จ!</h2>
+            <button id="restartBtn">ตกลง</button>
+        </div>
+    </div>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
